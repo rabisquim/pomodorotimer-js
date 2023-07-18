@@ -12,12 +12,6 @@ A Técnica Pomodoro é um método de gerenciamento de tempo desenvolvido por Fra
 
 * O usuário pode iniciar/pausar, parar e redefinir os temporizadores.
 
-
-## Screenshots
-
-![](https://imgur.com/hTavDYn)
-
-
 ## Testar
 
 [Clique aqui](https://pomodorotimer-js.netlify.app/) para testar.
