@@ -1,6 +1,6 @@
 //global variables
 
-let worktime = 25 * 60;
+let worktime = 15 * 60;
 let breaktime = 5 * 60;
 let timerInterval;
 let isRunning = false;
@@ -14,6 +14,10 @@ const startBtn = document.getElementById('start-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const stopBtn = document.getElementById('stop-btn');
 const resetBtn = document.getElementById('reset-btn');
+
+//Audio elemtn for the alarm sound
+
+const alarmSound = new Audio('/assets/alarm-sound.mp3');
 
 //Function to format time left minutes:seconds
 function formatTime(time) {
@@ -29,24 +33,33 @@ function updateTimer() {
 
 //Function to start timer
 function startTimer() {
-    if (!isRunning) {
-        isRunning = true;
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            updateTimer();
+  if (!isRunning) {
+    isRunning = true;
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimer();
 
-            if (timeLeft === 0) {
-                //Time is up, check if it's work session or break
-                if (sessionLabel.textContent === 'Work Session') {
-                    sessionLabel.textContent = 'Break Session';
-                    timeLeft = breaktime;
-                } else {
-                    sessionLabel.textContent = 'Work Session';
-                    timeLeft = worktime;
-                }
-            }
-        }, 1000);
-    }
+      if (timeLeft === 0) {
+        //Time is up, check if it's work session or break
+        if (sessionLabel.textContent === 'Work Session') {
+          sessionLabel.textContent = 'Break Session';
+          timeLeft = breaktime;
+        } else {
+          sessionLabel.textContent = 'Work Session';
+          timeLeft = worktime;
+        }
+
+        alarmSound.play();
+        
+        // Show notification
+        if (Notification.permission === 'granted') {
+          new Notification('Timer Finished', {
+            body: 'The timer has finished.',
+          });
+        }
+      }
+    }, 1000);
+  }
 }
 
 //Function to pause timer
@@ -79,6 +92,11 @@ resetBtn.addEventListener('click', resetTimer);
 
 //initialize the timer
 updateTimer();
+
+// Request permission for notifications
+if (Notification.permission !== 'granted') {
+  Notification.requestPermission();
+}
 
 
 
