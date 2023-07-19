@@ -1,6 +1,6 @@
 //global variables
 
-let worktime = 15 * 60;
+let worktime = 25 * 60;
 let breaktime = 5 * 60;
 let timerInterval;
 let isRunning = false;
