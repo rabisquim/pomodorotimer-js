@@ -7,26 +7,100 @@
     <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
-    <header class="header">
-        <h1 class="header__title">Pomodoro Timer</h1>
-    </header>
-        <div id="main">
-            <section class="main__container">
-                <h2 id="session-label">Work Session</h2>
-                <div id="time-left">25:00</div>
-                <div class="main__container__buttons">
-                    <button id="start-btn">Start</button>
-                    <button id="pause-btn">Pause</button>
-                    <button id="stop-btn">Stop</button>
-                    <button id="reset-btn">Reset</button>   
+    <div class="app">
+        <header class="header">
+            <h1 class="header__title">Pomodoro</h1>
+            <button id="settings-btn" class="icon-btn" type="button" aria-label="Abrir configurações">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+                    <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94s-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.62l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.58.24-1.12.55-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.62l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.62l1.92 3.32c.12.22.39.3.59.22l2.39-.96c.5.39 1.04.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.58-.24 1.12-.55 1.62-.94l2.39.96c.2.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.62l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
+                </svg>
+            </button>
+        </header>
+
+        <main class="main">
+            <div class="tabs" role="tablist" aria-label="Tipo de sessão">
+                <button class="tab is-active" type="button" role="tab" data-mode="focus">Foco</button>
+                <button class="tab" type="button" role="tab" data-mode="short">Pausa curta</button>
+                <button class="tab" type="button" role="tab" data-mode="long">Pausa longa</button>
+            </div>
+
+            <div class="timer">
+                <svg class="timer__ring" viewBox="0 0 240 240" aria-hidden="true">
+                    <circle class="ring__track" cx="120" cy="120" r="110"/>
+                    <circle id="ring-progress" class="ring__progress" cx="120" cy="120" r="110"/>
+                </svg>
+                <div class="timer__content">
+                    <div id="time-left" class="timer__time">25:00</div>
+                    <div id="session-label" class="timer__label">Foco</div>
                 </div>
-            </section>
-        </div>      
-    <footer class="footer">
-        <p class="footer__text">
-            Desenvolvido por <a class="rodape__text__link" href="https://github.com/rabisquim" target="_blank">Robson Paulo</a>
-        </p>
-    </footer>
+            </div>
+
+            <div class="controls">
+                <button id="start-btn" class="btn btn--primary" type="button">Iniciar</button>
+                <button id="skip-btn" class="btn" type="button">Pular</button>
+                <button id="reset-btn" class="btn" type="button">Reiniciar</button>
+            </div>
+
+            <p class="cycles"><span id="cycle-count">0</span> pomodoros concluídos</p>
+        </main>
+
+        <section class="radio">
+            <button id="radio-toggle" class="radio__toggle" type="button" aria-expanded="false">
+                <span class="radio__icon" aria-hidden="true">&#9835;</span>
+                Lo-fi radio
+                <span id="radio-state" class="radio__state">toca pra abrir</span>
+            </button>
+            <div id="radio-player" class="radio__player" hidden>
+                <div id="yt-player"></div>
+                <div id="radio-fallback" class="radio__fallback" hidden>
+                    <p>O player do YouTube não funciona abrindo o arquivo direto (<code>file://</code>). Rode um servidor local e abra por <code>http://localhost</code>.</p>
+                    <p class="radio__hint">No terminal: <code>python3 -m http.server</code></p>
+                    <a class="btn btn--primary radio__link" href="https://www.youtube.com/watch?v=1tJ8sc8I4z0" target="_blank" rel="noopener">Ouvir no YouTube</a>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p class="footer__text">
+                Desenvolvido por <a class="footer__link" href="https://github.com/rabisquim" target="_blank" rel="noopener">Robson Paulo</a>
+            </p>
+        </footer>
+    </div>
+
+    <div id="settings-modal" class="modal" hidden>
+        <div class="modal__overlay" data-close></div>
+        <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <h2 id="settings-title" class="modal__title">Configurações</h2>
+
+            <label class="field">
+                <span>Foco (min)</span>
+                <input id="set-focus" type="number" min="1" max="120" step="1" value="25">
+            </label>
+            <label class="field">
+                <span>Pausa curta (min)</span>
+                <input id="set-short" type="number" min="1" max="60" step="1" value="5">
+            </label>
+            <label class="field">
+                <span>Pausa longa (min)</span>
+                <input id="set-long" type="number" min="1" max="60" step="1" value="15">
+            </label>
+            <label class="field">
+                <span>Ciclos até pausa longa</span>
+                <input id="set-cycles" type="number" min="1" max="12" step="1" value="4">
+            </label>
+            <label class="field field--row">
+                <span>Auto-iniciar próxima sessão</span>
+                <input id="set-autostart" type="checkbox">
+            </label>
+
+            <div class="modal__actions">
+                <button id="settings-cancel" class="btn" type="button">Cancelar</button>
+                <button id="settings-save" class="btn btn--primary" type="button">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="scripts/script.js"></script>
 </body>
 </html>
