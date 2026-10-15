@@ -13,7 +13,9 @@ A Técnica Pomodoro é um método de gerenciamento de tempo criado por Francesco
 - **Auto-iniciar** a próxima sessão (opcional).
 - **Pular** e **Reiniciar** a qualquer momento.
 - **Alarme sonoro** e **notificação** ao fim de cada sessão.
-- **Rádio lo-fi** embutida (YouTube) com play/pause.
+- **Rádio com estações** embutidas (YouTube): lo-fi, synthwave, jazz, música clássica e som de chuva; play/pause e estação escolhida salva no navegador.
+- **Sons ambientes offline** gerados por código (Web Audio): chuva, ruído branco e ondas do mar, com controle de volume.
+- **Link personalizado**: cole a URL de qualquer vídeo do YouTube para tocar como estação.
 - **Timer sem drift**: o tempo é calculado por timestamp, não por contagem simples.
 - Layout **responsivo**.
 
@@ -22,7 +24,8 @@ A Técnica Pomodoro é um método de gerenciamento de tempo criado por Francesco
 - HTML, CSS e JavaScript puro (vanilla), sem build.
 - SVG para o anel de progresso.
 - `localStorage` para persistir as configurações.
-- YouTube IFrame API para a rádio.
+- YouTube IFrame API para as estações de rádio.
+- Web Audio API para os sons ambientes gerados no próprio navegador.
 
 ## Estrutura do projeto
 
@@ -39,9 +42,9 @@ A Técnica Pomodoro é um método de gerenciamento de tempo criado por Francesco
 
 ## Como executar
 
-Abra o `index.html` no navegador — o timer funciona direto assim.
+Abra o `index.html` no navegador — o timer e os **sons ambientes** funcionam direto assim.
 
-Para a **rádio** funcionar, é preciso servir a página por HTTP (o YouTube não permite embed em `file://`):
+Para as **estações do YouTube**, é preciso servir a página por HTTP (o YouTube não permite embed em `file://`):
 
 ```bash
 python3 -m http.server

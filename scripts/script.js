@@ -1,6 +1,27 @@
 const RING_CIRCUMFERENCE = 2 * Math.PI * 110;
 const STORAGE_KEY = "pomodoro-settings";
-const RADIO_VIDEO_ID = "1tJ8sc8I4z0";
+const CUSTOM_STATION_ID = "custom";
+
+const STATIONS = [
+  { id: "lofi", label: "Lo-fi beats", category: "Lo-fi", videoId: "1tJ8sc8I4z0" },
+  { id: "synthwave", label: "Synthwave", category: "Lo-fi", videoId: "4xDzrJKXOOY" },
+  { id: "jazz", label: "Jazz lo-fi", category: "Jazz", videoId: "E2vONfzoyRI" },
+  { id: "baroque", label: "Barroco (estudo)", category: "Clássica", videoId: "efWKRfVDMf0" },
+  { id: "baroque60", label: "Barroco 60 BPM", category: "Clássica", videoId: "2A9ZBES9z2Y" },
+  { id: "rain-yt", label: "Chuva (24/7)", category: "Ambient", videoId: "-OekvEFm1lo" },
+];
+
+const AMBIENCES = [
+  { id: "rain", label: "Chuva" },
+  { id: "white", label: "Ruído branco" },
+  { id: "waves", label: "Ondas do mar" },
+];
+
+const AMBIENCE_CFG = {
+  rain: { filters: [{ type: "highpass", freq: 400 }, { type: "lowpass", freq: 6000 }], gain: 0.3 },
+  white: { filters: [], gain: 0.25 },
+  waves: { filters: [{ type: "lowpass", freq: 700 }], gain: 0.4, lfo: 0.07 },
+};
 
 const DEFAULT_SETTINGS = {
   focus: 25,
@@ -8,6 +29,9 @@ const DEFAULT_SETTINGS = {
   long: 15,
   cycles: 4,
   autoStart: false,
+  station: "lofi",
+  customUrl: "",
+  volume: 0.6,
 };
 
 const LABELS = { focus: "Foco", short: "Pausa curta", long: "Pausa longa" };
@@ -36,6 +60,12 @@ const radioToggleEl = document.getElementById("radio-toggle");
 const radioPlayerEl = document.getElementById("radio-player");
 const radioStateEl = document.getElementById("radio-state");
 const radioFallbackEl = document.getElementById("radio-fallback");
+const radioStationEl = document.getElementById("radio-station");
+const radioCustomEl = document.getElementById("radio-custom");
+const radioCustomUrlEl = document.getElementById("radio-custom-url");
+const radioCustomApplyEl = document.getElementById("radio-custom-apply");
+const radioVolumeRowEl = document.getElementById("radio-volume-row");
+const radioVolumeEl = document.getElementById("radio-volume");
 
 const isFileProtocol = location.protocol === "file:";
 
@@ -227,42 +257,281 @@ function applySettings() {
   reset();
 }
 
-// Radio (YouTube IFrame API)
+// Radio — YouTube stations + local ambience sounds
 let radioPlayer = null;
 let radioOpen = false;
+let apiReady = false;
+let loadedVideoId = null;
 
-function onYouTubeIframeAPIReady() {
-  if (isFileProtocol) return;
-  radioPlayer = new YT.Player("yt-player", {
-    videoId: RADIO_VIDEO_ID,
-    playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-    events: {
-      onStateChange: (event) => {
-        if (!radioOpen) return;
-        if (event.data === YT.PlayerState.PLAYING) radioStateEl.textContent = "tocando";
-        else if (event.data === YT.PlayerState.PAUSED) radioStateEl.textContent = "pausado";
-      },
-    },
+let audioCtx = null;
+let ambienceNodes = null;
+
+function isAmbience(id) {
+  return AMBIENCES.some((a) => a.id === id);
+}
+
+function parseVideoId(url) {
+  if (!url) return null;
+  const value = url.trim();
+  if (/^[\w-]{11}$/.test(value)) return value;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+  const host = parsed.hostname.replace(/^www\./, "");
+  if (host === "youtu.be") {
+    const id = parsed.pathname.slice(1).split("/")[0];
+    return /^[\w-]{11}$/.test(id) ? id : null;
+  }
+  if (host.endsWith("youtube.com")) {
+    const v = parsed.searchParams.get("v");
+    if (v) return v;
+    const match = parsed.pathname.match(/\/(?:embed|shorts|live|v)\/([^/?#]+)/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function currentVideoId() {
+  if (settings.station === CUSTOM_STATION_ID) return parseVideoId(settings.customUrl);
+  const station = STATIONS.find((s) => s.id === settings.station);
+  return station ? station.videoId : null;
+}
+
+function buildStationSelect() {
+  radioStationEl.replaceChildren();
+  const categories = [...new Set(STATIONS.map((s) => s.category))];
+  categories.forEach((category) => {
+    const group = document.createElement("optgroup");
+    group.label = category;
+    STATIONS.filter((s) => s.category === category).forEach((s) => {
+      group.appendChild(new Option(s.label, s.id));
+    });
+    radioStationEl.appendChild(group);
+  });
+
+  const localGroup = document.createElement("optgroup");
+  localGroup.label = "Sons locais (offline)";
+  AMBIENCES.forEach((a) => localGroup.appendChild(new Option(a.label, a.id)));
+  radioStationEl.appendChild(localGroup);
+
+  radioStationEl.appendChild(new Option("Link personalizado…", CUSTOM_STATION_ID));
+}
+
+function buildFallback() {
+  const title = document.createElement("p");
+  title.className = "radio__fallback-title";
+  title.textContent = "Abrir no YouTube";
+  radioFallbackEl.appendChild(title);
+  STATIONS.forEach((s) => {
+    const link = document.createElement("a");
+    link.href = `https://www.youtube.com/watch?v=${s.videoId}`;
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.textContent = s.label;
+    radioFallbackEl.appendChild(link);
   });
 }
-window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+function handlePlayerState(event) {
+  if (!radioOpen || isAmbience(settings.station)) return;
+  if (event.data === YT.PlayerState.PLAYING) radioStateEl.textContent = "tocando";
+  else if (event.data === YT.PlayerState.PAUSED) radioStateEl.textContent = "pausado";
+  else if (event.data === YT.PlayerState.BUFFERING) radioStateEl.textContent = "carregando…";
+}
+
+function playerPlay() {
+  if (radioPlayer && typeof radioPlayer.playVideo === "function") radioPlayer.playVideo();
+}
+
+function playerPause() {
+  if (radioPlayer && typeof radioPlayer.pauseVideo === "function") radioPlayer.pauseVideo();
+}
+
+function ensurePlayer(videoId) {
+  if (!apiReady) return;
+  if (!radioPlayer) {
+    radioPlayer = new YT.Player("yt-player", {
+      videoId,
+      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onReady: () => {
+          if (radioOpen && !isAmbience(settings.station)) playerPlay();
+        },
+        onStateChange: handlePlayerState,
+      },
+    });
+    loadedVideoId = videoId;
+    return;
+  }
+  if (videoId && videoId !== loadedVideoId) {
+    loadedVideoId = videoId;
+    if (typeof radioPlayer.loadVideoById === "function") radioPlayer.loadVideoById(videoId);
+  }
+}
+
+function applyRadio() {
+  const ambience = isAmbience(settings.station);
+  radioCustomEl.hidden = settings.station !== CUSTOM_STATION_ID;
+  radioVolumeRowEl.hidden = !ambience;
+  radioStationEl.value = settings.station;
+
+  if (ambience) {
+    radioFallbackEl.hidden = true;
+    playerPause();
+    if (radioOpen) {
+      startAmbience(settings.station);
+      radioStateEl.textContent = "tocando";
+    } else {
+      stopAmbience();
+      radioStateEl.textContent = "toca pra abrir";
+    }
+    return;
+  }
+
+  stopAmbience();
+
+  if (isFileProtocol) {
+    radioFallbackEl.hidden = !radioOpen;
+    playerPause();
+    radioStateEl.textContent = radioOpen ? "abrir no YouTube" : "toca pra abrir";
+    return;
+  }
+
+  radioFallbackEl.hidden = true;
+
+  const videoId = currentVideoId();
+  if (!videoId) {
+    radioStateEl.textContent = radioOpen ? "link inválido" : "toca pra abrir";
+    return;
+  }
+
+  ensurePlayer(videoId);
+  if (radioOpen) playerPlay();
+  else playerPause();
+  radioStateEl.textContent = radioOpen ? "carregando…" : "toca pra abrir";
+}
+
+function setStation(id) {
+  settings.station = id;
+  persistSettings();
+  applyRadio();
+}
+
+function applyCustomUrl() {
+  const value = radioCustomUrlEl.value.trim();
+  if (!parseVideoId(value)) {
+    radioCustomUrlEl.classList.add("is-invalid");
+    return;
+  }
+  radioCustomUrlEl.classList.remove("is-invalid");
+  settings.customUrl = value;
+  settings.station = CUSTOM_STATION_ID;
+  persistSettings();
+  applyRadio();
+}
 
 function toggleRadio() {
   radioOpen = !radioOpen;
   radioPlayerEl.hidden = !radioOpen;
   radioToggleEl.setAttribute("aria-expanded", String(radioOpen));
+  applyRadio();
+}
 
-  if (isFileProtocol) {
-    radioFallbackEl.hidden = !radioOpen;
-    radioStateEl.textContent = radioOpen ? "modo local" : "toca pra ouvir";
+function makeNoiseBuffer(ctx) {
+  const length = ctx.sampleRate * 2;
+  const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < length; i += 1) data[i] = Math.random() * 2 - 1;
+  return buffer;
+}
+
+function startAmbience(id) {
+  const cfg = AMBIENCE_CFG[id];
+  if (!cfg) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  } catch {
     return;
   }
 
-  radioStateEl.textContent = radioOpen ? "tocando" : "toca pra ouvir";
-  if (!radioPlayer) return;
-  if (radioOpen) radioPlayer.playVideo();
-  else radioPlayer.pauseVideo();
+  stopAmbience();
+
+  const source = audioCtx.createBufferSource();
+  source.buffer = makeNoiseBuffer(audioCtx);
+  source.loop = true;
+
+  let node = source;
+  (cfg.filters || []).forEach((f) => {
+    const biquad = audioCtx.createBiquadFilter();
+    biquad.type = f.type;
+    biquad.frequency.value = f.freq;
+    node.connect(biquad);
+    node = biquad;
+  });
+
+  const gain = audioCtx.createGain();
+  node.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  let lfo = null;
+  let lfoGain = null;
+  const base = settings.volume * cfg.gain;
+
+  if (cfg.lfo) {
+    lfo = audioCtx.createOscillator();
+    lfo.frequency.value = cfg.lfo;
+    lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = base * 0.5;
+    gain.gain.value = base * 0.5;
+    lfo.connect(lfoGain);
+    lfoGain.connect(gain.gain);
+    lfo.start();
+  } else {
+    gain.gain.value = base;
+  }
+
+  source.start();
+  ambienceNodes = { source, gain, lfo, lfoGain, id };
 }
+
+function stopAmbience() {
+  if (!ambienceNodes) return;
+  try {
+    ambienceNodes.source.stop();
+  } catch {
+    /* already stopped */
+  }
+  try {
+    ambienceNodes.source.disconnect();
+    if (ambienceNodes.lfo) ambienceNodes.lfo.stop();
+  } catch {
+    /* ignore */
+  }
+  ambienceNodes = null;
+}
+
+function updateAmbienceVolume() {
+  if (!ambienceNodes) return;
+  const cfg = AMBIENCE_CFG[ambienceNodes.id];
+  const base = settings.volume * cfg.gain;
+  if (ambienceNodes.lfoGain) {
+    ambienceNodes.gain.gain.value = base * 0.5;
+    ambienceNodes.lfoGain.gain.value = base * 0.5;
+  } else {
+    ambienceNodes.gain.gain.value = base;
+  }
+}
+
+function onYouTubeIframeAPIReady() {
+  apiReady = true;
+  if (isFileProtocol) return;
+  if (radioOpen && !isAmbience(settings.station)) applyRadio();
+}
+window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
 
 // Events
 startBtnEl.addEventListener("click", toggle);
@@ -273,6 +542,19 @@ settingsSaveEl.addEventListener("click", applySettings);
 settingsCancelEl.addEventListener("click", closeSettings);
 modalEl.querySelector("[data-close]").addEventListener("click", closeSettings);
 radioToggleEl.addEventListener("click", toggleRadio);
+radioStationEl.addEventListener("change", () => setStation(radioStationEl.value));
+radioCustomApplyEl.addEventListener("click", applyCustomUrl);
+radioCustomUrlEl.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    applyCustomUrl();
+  }
+});
+radioVolumeEl.addEventListener("input", () => {
+  settings.volume = Number(radioVolumeEl.value) / 100;
+  persistSettings();
+  updateAmbienceVolume();
+});
 
 tabsEls.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -288,7 +570,19 @@ document.addEventListener("keydown", (event) => {
 });
 
 // Init
+buildStationSelect();
+buildFallback();
+radioVolumeEl.value = String(Math.round(settings.volume * 100));
+
+const stationKnown =
+  isAmbience(settings.station) ||
+  settings.station === CUSTOM_STATION_ID ||
+  STATIONS.some((s) => s.id === settings.station);
+if (!stationKnown) settings.station = "lofi";
+radioStationEl.value = settings.station;
+
 render();
+applyRadio();
 
 if ("Notification" in window && Notification.permission !== "granted") {
   Notification.requestPermission();

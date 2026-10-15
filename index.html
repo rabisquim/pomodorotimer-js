@@ -47,14 +47,24 @@
         <section class="radio">
             <button id="radio-toggle" class="radio__toggle" type="button" aria-expanded="false">
                 <span class="radio__icon" aria-hidden="true">&#9835;</span>
-                Lo-fi radio
+                <span class="radio__name">Rádio</span>
                 <span id="radio-state" class="radio__state">toca pra abrir</span>
             </button>
             <div id="radio-player" class="radio__player" hidden>
-                <div id="yt-player"></div>
-                <div id="radio-fallback" class="radio__fallback" hidden>
-                    <a class="btn btn--primary radio__link" href="https://www.youtube.com/watch?v=1tJ8sc8I4z0" target="_blank" rel="noopener">Ouvir no YouTube</a>
+                <label class="radio__field">
+                    <span>Estação</span>
+                    <select id="radio-station"></select>
+                </label>
+                <div id="radio-custom" class="radio__custom" hidden>
+                    <input id="radio-custom-url" class="radio__input" type="url" placeholder="Cole um link do YouTube" autocomplete="off">
+                    <button id="radio-custom-apply" class="btn" type="button">Tocar</button>
                 </div>
+                <label id="radio-volume-row" class="radio__field" hidden>
+                    <span>Volume</span>
+                    <input id="radio-volume" class="radio__range" type="range" min="0" max="100" step="1" value="60">
+                </label>
+                <div id="yt-player"></div>
+                <div id="radio-fallback" class="radio__fallback" hidden></div>
             </div>
         </section>
 
