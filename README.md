@@ -4,6 +4,16 @@ Timer da **Técnica Pomodoro** com visual dark lo-fi, anel de progresso e rádio
 
 A Técnica Pomodoro é um método de gerenciamento de tempo criado por Francesco Cirillo no fim dos anos 80. Ela divide o trabalho em intervalos (tradicionalmente 25 minutos) separados por pequenas pausas, ajudando a manter o foco e evitar a fadiga.
 
+## Capturas de tela
+
+| Foco | Pausa curta | Pausa longa |
+| --- | --- | --- |
+| ![Sessão de foco em andamento](screenshots/foco.png) | ![Pausa curta](screenshots/pausa-curta.png) | ![Pausa longa](screenshots/pausa-longa.png) |
+
+| Configurações | Visão mobile |
+| --- | --- |
+| ![Modal de configurações](screenshots/configuracoes.png) | ![Layout responsivo](screenshots/mobile.png) |
+
 ## Funcionalidades
 
 - **Anel de progresso** que esvazia conforme o tempo passa.
@@ -34,6 +44,8 @@ A Técnica Pomodoro é um método de gerenciamento de tempo criado por Francesco
 ├── index.html
 ├── assets/
 │   └── alarm-sound.mp3
+├── screenshots/
+│   └── ...
 ├── scripts/
 │   └── script.js
 └── styles/
