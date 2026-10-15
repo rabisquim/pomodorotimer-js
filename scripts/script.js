@@ -17,7 +17,7 @@ const resetBtn = document.getElementById("reset-btn");
 
 //Audio element for the alarm sound
 
-const alarmSound = new Audio("/assets/alarm-sound.mp3");
+const alarmSound = new Audio("assets/alarm-sound.mp3");
 
 //Function to format time left minutes:seconds
 function formatTime(time) {
@@ -83,7 +83,6 @@ function stopTimer() {
 //function to reset timer
 function resetTimer() {
   stopTimer();
-  timeLeft = worktime;
 }
 
 //Event listeners to buttons
@@ -96,6 +95,6 @@ resetBtn.addEventListener("click", resetTimer);
 updateTimer();
 
 //Request permission for notifications
-if (Notofication.permission !== "granted") {
+if (Notification.permission !== "granted") {
   Notification.requestPermission();
 }
