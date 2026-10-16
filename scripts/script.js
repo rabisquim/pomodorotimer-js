@@ -3,18 +3,18 @@ const STORAGE_KEY = "pomodoro-settings";
 const CUSTOM_STATION_ID = "custom";
 
 const STATIONS = [
-  { id: "lofi", label: "Lo-fi beats", category: "Lo-fi", videoId: "1tJ8sc8I4z0" },
-  { id: "synthwave", label: "Synthwave", category: "Lo-fi", videoId: "4xDzrJKXOOY" },
-  { id: "jazz", label: "Jazz lo-fi", category: "Jazz", videoId: "E2vONfzoyRI" },
-  { id: "baroque", label: "Barroco (estudo)", category: "Clássica", videoId: "efWKRfVDMf0" },
-  { id: "baroque60", label: "Barroco 60 BPM", category: "Clássica", videoId: "2A9ZBES9z2Y" },
-  { id: "rain-yt", label: "Chuva (24/7)", category: "Ambient", videoId: "-OekvEFm1lo" },
+  { id: "lofi", labelKey: "station.lofi", categoryKey: "cat.lofi", videoId: "1tJ8sc8I4z0" },
+  { id: "synthwave", labelKey: "station.synthwave", categoryKey: "cat.lofi", videoId: "4xDzrJKXOOY" },
+  { id: "jazz", labelKey: "station.jazz", categoryKey: "cat.jazz", videoId: "E2vONfzoyRI" },
+  { id: "baroque", labelKey: "station.baroque", categoryKey: "cat.classical", videoId: "efWKRfVDMf0" },
+  { id: "baroque60", labelKey: "station.baroque60", categoryKey: "cat.classical", videoId: "2A9ZBES9z2Y" },
+  { id: "rain-yt", labelKey: "station.rain", categoryKey: "cat.ambient", videoId: "-OekvEFm1lo" },
 ];
 
 const AMBIENCES = [
-  { id: "rain", label: "Chuva" },
-  { id: "white", label: "Ruído branco" },
-  { id: "waves", label: "Ondas do mar" },
+  { id: "rain", labelKey: "ambience.rain" },
+  { id: "white", labelKey: "ambience.white" },
+  { id: "waves", labelKey: "ambience.waves" },
 ];
 
 const AMBIENCE_CFG = {
@@ -34,8 +34,6 @@ const DEFAULT_SETTINGS = {
   volume: 0.6,
 };
 
-const LABELS = { focus: "Foco", short: "Pausa curta", long: "Pausa longa" };
-
 // DOM elements
 const timeLeftEl = document.getElementById("time-left");
 const sessionLabelEl = document.getElementById("session-label");
@@ -47,6 +45,7 @@ const cycleCountEl = document.getElementById("cycle-count");
 const tabsEls = document.querySelectorAll(".tab");
 
 const settingsBtnEl = document.getElementById("settings-btn");
+const langBtnEl = document.getElementById("lang-btn");
 const modalEl = document.getElementById("settings-modal");
 const setFocusEl = document.getElementById("set-focus");
 const setShortEl = document.getElementById("set-short");
@@ -115,14 +114,14 @@ function formatTime(totalSeconds) {
 
 function render() {
   timeLeftEl.textContent = formatTime(state.remaining);
-  sessionLabelEl.textContent = LABELS[state.mode];
+  sessionLabelEl.textContent = I18N.t(`mode.${state.mode}`);
   document.body.dataset.mode = state.mode;
   cycleCountEl.textContent = String(state.focusDone);
 
   const ratio = state.total > 0 ? state.remaining / state.total : 0;
   ringProgressEl.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - ratio));
 
-  startBtnEl.textContent = state.running ? "Pausar" : "Iniciar";
+  startBtnEl.textContent = state.running ? I18N.t("btn.pause") : I18N.t("btn.start");
 
   tabsEls.forEach((tab) => {
     tab.classList.toggle("is-active", tab.dataset.mode === state.mode);
@@ -195,7 +194,7 @@ function complete() {
   if (state.mode === "focus") state.focusDone += 1;
 
   playAlarm();
-  notify(LABELS[state.mode]);
+  notify(I18N.t(`mode.${state.mode}`));
 
   setMode(nextMode());
 
@@ -220,8 +219,8 @@ function playAlarm() {
 
 function notify(finishedLabel) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  new Notification("Sessão finalizada", {
-    body: `${finishedLabel} concluída. Hora da próxima etapa!`,
+  new Notification(I18N.t("notify.title"), {
+    body: I18N.t("notify.body", { label: finishedLabel }),
   });
 }
 
@@ -302,44 +301,45 @@ function currentVideoId() {
 
 function buildStationSelect() {
   radioStationEl.replaceChildren();
-  const categories = [...new Set(STATIONS.map((s) => s.category))];
-  categories.forEach((category) => {
+  const categories = [...new Set(STATIONS.map((s) => s.categoryKey))];
+  categories.forEach((categoryKey) => {
     const group = document.createElement("optgroup");
-    group.label = category;
-    STATIONS.filter((s) => s.category === category).forEach((s) => {
-      group.appendChild(new Option(s.label, s.id));
+    group.label = I18N.t(categoryKey);
+    STATIONS.filter((s) => s.categoryKey === categoryKey).forEach((s) => {
+      group.appendChild(new Option(I18N.t(s.labelKey), s.id));
     });
     radioStationEl.appendChild(group);
   });
 
   const localGroup = document.createElement("optgroup");
-  localGroup.label = "Sons locais (offline)";
-  AMBIENCES.forEach((a) => localGroup.appendChild(new Option(a.label, a.id)));
+  localGroup.label = I18N.t("radio.localSounds");
+  AMBIENCES.forEach((a) => localGroup.appendChild(new Option(I18N.t(a.labelKey), a.id)));
   radioStationEl.appendChild(localGroup);
 
-  radioStationEl.appendChild(new Option("Link personalizado…", CUSTOM_STATION_ID));
+  radioStationEl.appendChild(new Option(I18N.t("radio.customOption"), CUSTOM_STATION_ID));
 }
 
 function buildFallback() {
+  radioFallbackEl.replaceChildren();
   const title = document.createElement("p");
   title.className = "radio__fallback-title";
-  title.textContent = "Abrir no YouTube";
+  title.textContent = I18N.t("radio.fallbackTitle");
   radioFallbackEl.appendChild(title);
   STATIONS.forEach((s) => {
     const link = document.createElement("a");
     link.href = `https://www.youtube.com/watch?v=${s.videoId}`;
     link.target = "_blank";
     link.rel = "noopener";
-    link.textContent = s.label;
+    link.textContent = I18N.t(s.labelKey);
     radioFallbackEl.appendChild(link);
   });
 }
 
 function handlePlayerState(event) {
   if (!radioOpen || isAmbience(settings.station)) return;
-  if (event.data === YT.PlayerState.PLAYING) radioStateEl.textContent = "tocando";
-  else if (event.data === YT.PlayerState.PAUSED) radioStateEl.textContent = "pausado";
-  else if (event.data === YT.PlayerState.BUFFERING) radioStateEl.textContent = "carregando…";
+  if (event.data === YT.PlayerState.PLAYING) radioStateEl.textContent = I18N.t("radio.state.playing");
+  else if (event.data === YT.PlayerState.PAUSED) radioStateEl.textContent = I18N.t("radio.state.paused");
+  else if (event.data === YT.PlayerState.BUFFERING) radioStateEl.textContent = I18N.t("radio.state.loading");
 }
 
 function playerPlay() {
@@ -383,10 +383,10 @@ function applyRadio() {
     playerPause();
     if (radioOpen) {
       startAmbience(settings.station);
-      radioStateEl.textContent = "tocando";
+      radioStateEl.textContent = I18N.t("radio.state.playing");
     } else {
       stopAmbience();
-      radioStateEl.textContent = "toca pra abrir";
+      radioStateEl.textContent = I18N.t("radio.state.open");
     }
     return;
   }
@@ -396,7 +396,7 @@ function applyRadio() {
   if (isFileProtocol) {
     radioFallbackEl.hidden = !radioOpen;
     playerPause();
-    radioStateEl.textContent = radioOpen ? "abrir no YouTube" : "toca pra abrir";
+    radioStateEl.textContent = radioOpen ? I18N.t("radio.state.fallback") : I18N.t("radio.state.open");
     return;
   }
 
@@ -404,14 +404,14 @@ function applyRadio() {
 
   const videoId = currentVideoId();
   if (!videoId) {
-    radioStateEl.textContent = radioOpen ? "link inválido" : "toca pra abrir";
+    radioStateEl.textContent = radioOpen ? I18N.t("radio.state.invalid") : I18N.t("radio.state.open");
     return;
   }
 
   ensurePlayer(videoId);
   if (radioOpen) playerPlay();
   else playerPause();
-  radioStateEl.textContent = radioOpen ? "carregando…" : "toca pra abrir";
+  radioStateEl.textContent = radioOpen ? I18N.t("radio.state.loading") : I18N.t("radio.state.open");
 }
 
 function setStation(id) {
@@ -451,6 +451,7 @@ function makeNoiseBuffer(ctx) {
 function startAmbience(id) {
   const cfg = AMBIENCE_CFG[id];
   if (!cfg) return;
+  if (ambienceNodes && ambienceNodes.id === id) return;
   try {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
@@ -538,6 +539,7 @@ startBtnEl.addEventListener("click", toggle);
 skipBtnEl.addEventListener("click", skip);
 resetBtnEl.addEventListener("click", reset);
 settingsBtnEl.addEventListener("click", openSettings);
+langBtnEl.addEventListener("click", () => I18N.toggleLang());
 settingsSaveEl.addEventListener("click", applySettings);
 settingsCancelEl.addEventListener("click", closeSettings);
 modalEl.querySelector("[data-close]").addEventListener("click", closeSettings);
@@ -567,6 +569,14 @@ tabsEls.forEach((tab) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !modalEl.hidden) closeSettings();
+});
+
+document.addEventListener("languagechange", () => {
+  render();
+  buildStationSelect();
+  buildFallback();
+  radioStationEl.value = settings.station;
+  applyRadio();
 });
 
 // Init

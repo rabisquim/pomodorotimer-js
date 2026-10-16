@@ -78,6 +78,29 @@ body {
   transform: rotate(35deg);
 }
 
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-btn--lang {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  padding: 0 12px;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.icon-btn--lang:hover {
+  transform: none;
+}
+
 /* Tabs */
 .tabs {
   display: flex;
